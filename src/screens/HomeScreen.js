@@ -1,17 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons, FontAwesome } from '@expo/vector-icons';
+import { View, FlatList, StyleSheet, Image, TouchableOpacity, Text } from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import axios from 'axios';
+import Header from '../components/Header';
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => {
   const [weather, setWeather] = useState(null);
-  const [city, setCity] = useState(null);
+  const [locationDetails, setLocationDetails] = useState(null);
+  const [selectedMode, setSelectedMode] = useState('HomeScreen'); // Default mode is 'home'
+
+  const weatherIconMap = {
+    Sunny: 'weather-sunny',
+    'Partly cloudy': 'weather-partly-cloudy',
+    Cloudy: 'weather-cloudy',
+    Rain: 'weather-rainy',
+    Thunderstorm: 'weather-lightning',
+    Snow: 'weather-snowy',
+    Fog: 'weather-fog',
+  };
 
   useEffect(() => {
     const fetchLocationAndWeather = async () => {
       try {
-        // Get current location
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           console.error('Permission to access location was denied');
@@ -21,14 +32,11 @@ const HomeScreen = () => {
         const userLocation = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = userLocation.coords;
 
-        // Fetch city name using reverse geocoding
         const locationResponse = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (locationResponse.length > 0) {
-          const { city: currentCity } = locationResponse[0];
-          setCity(currentCity || 'Unknown Location');
+          setLocationDetails(locationResponse[0]);
         }
 
-        // Fetch weather data
         const weatherResponse = await axios.get(
           `http://api.weatherapi.com/v1/current.json?key=f3ff6d04c96747d9b68100825251201&q=${latitude},${longitude}&aqi=no`
         );
@@ -42,81 +50,59 @@ const HomeScreen = () => {
   }, []);
 
   const buses = [
-    { id: '1', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 5 Minutes' },
-    { id: '2', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 5 Minutes' },
-    { id: '3', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 5 Minutes' },
-    { id: '4', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 5 Minutes' },
+    { id: '1', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 5 Minutes', seatStatus: 'Available' },
+    { id: '2', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 10 Minutes', seatStatus: 'Partially Filled' },
+    { id: '3', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 15 Minutes', seatStatus: 'Filled' },
+    { id: '4', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 20 Minutes', seatStatus: 'Available' },
+    { id: '5', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 20 Minutes', seatStatus: 'Available' },
   ];
 
   const renderBusItem = ({ item }) => (
     <View style={styles.busItem}>
       <View style={styles.busIconContainer}>
-        <Image
-          source={require('../../assets/images/Main-logo.png')} // Replace with your bus icon
-          style={styles.busIcon}
-        />
+        <Image source={require('../../assets/images/Main-logo.png')} style={styles.busIcon} />
       </View>
       <View style={styles.busInfo}>
         <Text style={styles.busName}>{item.name}</Text>
         <Text style={styles.busRoute}>{item.route}</Text>
         <Text style={styles.busTime}>{item.time}</Text>
+        <Text style={[styles.seatStatus, getSeatStatusStyle(item.seatStatus)]}>
+          {item.seatStatus}
+        </Text>
       </View>
       <TouchableOpacity style={styles.busArrow}>
-        <FontAwesome name="arrow-right" size={20} color="#FFFFFF" />
+        <FontAwesome name="map-marker" size={20} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
 
+  const getSeatStatusStyle = (status) => {
+    switch (status) {
+      case 'Filled':
+        return { color: '#D32F2F' }; // Red
+      case 'Partially Filled':
+        return { color: '#FFA000' }; // Orange
+      case 'Available':
+        return { color: '#34A853' }; // Green
+      default:
+        return { color: '#000' }; // Default color
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {/* Weather and Location Section */}
+      <Header
+        weather={weather}
+        locationDetails={locationDetails}
+        weatherIconMap={weatherIconMap}
+        selectedMode={selectedMode}
+        onModeChange={setSelectedMode}
+        navigation={navigation} // Pass navigation prop to Header
+      />
 
-      {/* SubContainer */}
-      <View style={styles.subContainer}>
-        <View style={styles.weatherContainer}>
-          <View style={styles.weatherInfo}>
-            {weather ? (
-              <>
-                <Text style={styles.temperature}>{Math.round(weather.current.temp_c)}</Text>
-                <MaterialCommunityIcons
-                  name="weather-sunny"
-                  size={30}
-                  color="black"
-                />
-              </>
-            ) : (
-              <Text>Loading...</Text>
-            )}
-          </View>
-          <Image source={require('../../assets/images/Main-logo.png')} style={styles.logo} />
-        </View>
-        <View style={styles.locationContainer}>
-          <Text style={styles.locationLabel}>Your Location is:</Text>
-          {city ? (
-            <Text style={styles.location}>{city}</Text>
-          ) : (
-            <Text>Fetching location...</Text>
-          )}
-        </View>
+      {/* Add Bus Stops Text */}
+      <Text style={styles.busStopsText}>Buses</Text>
 
-        {/* Transport Modes */}
-        <View style={styles.transportModesContainer}>
-          <View style={styles.transportModeWrapper}>
-            <MaterialCommunityIcons name="train" size={30} color="black" />
-          </View>
-          <View style={styles.transportModeWrapper}>
-            <MaterialCommunityIcons name="bus" size={30} color="black" />
-          </View>
-          <View style={styles.transportModeWrapper}>
-            <MaterialCommunityIcons name="subway" size={30} color="black" />
-          </View>
-          <View style={styles.transportModeWrapper}>
-            <MaterialCommunityIcons name="seat-recline-normal" size={30} color="black" />
-          </View>
-        </View>
-      </View>
-
-      {/* Bus List */}
       <FlatList
         data={buses}
         renderItem={renderBusItem}
@@ -131,72 +117,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#31473A',
+    paddingTop: 190, // Space for header
   },
-  weatherContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-  },
-  weatherInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  temperature: {
-    fontSize: 30,
-    marginRight: 10,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    resizeMode: 'contain',
-  },
-  subContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '90%',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 60,
-  },
-  locationContainer: {
-    alignItems: 'center',
-    marginTop: 5,
-    padding: 5,
-    borderWidth: 1,
-    borderColor: '#000',
-    borderRadius: 8,
-    backgroundColor: '#F5F5F5',
-  },
-  locationLabel: {
-    fontSize: 14,
-    color: '#6F6F6F',
-  },
-  location: {
-    fontSize: 20,
+  busStopsText: {
+    fontSize: 24,
     fontWeight: 'bold',
-  },
-  transportModesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 15,
-  },
-  transportModeWrapper: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: '#000',
-    borderRadius: 8,
-    marginHorizontal: 5,
-    backgroundColor: '#FFFFFF',
+    color: 'white',
+    textAlign: 'center',
+    marginVertical: 10,
   },
   busList: {
     backgroundColor: '#31473A',
     padding: 10,
-    marginTop: 300, // Adjust the list's position to accommodate the subContainer
   },
   busItem: {
     flexDirection: 'row',
@@ -229,11 +161,16 @@ const styles = StyleSheet.create({
   },
   busRoute: {
     fontSize: 14,
-    color: '#6F6F6F',
+    color: '#6F6F',
   },
   busTime: {
     fontSize: 14,
-    color: '#34A853', // Green for arrival time
+    color: '#34A853',
+  },
+  seatStatus: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 5,
   },
   busArrow: {
     backgroundColor: '#31473A',
