@@ -1,6 +1,6 @@
-// firebase.js
-import { initializeApp } from '@react-native-firebase/app';
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from '@react-native-firebase/auth';
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import "@firebase/auth";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAtEBPCdClOfCewMbylWd_Us9Ps4Svf9LI",
@@ -13,29 +13,7 @@ const firebaseConfig = {
   
 
  // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-// Recaptcha setup
-const setupRecaptcha = (containerId) => {
-    try {
-      const recaptchaVerifier = new RecaptchaVerifier(
-        containerId,
-        {
-          size: 'invisible',
-          callback: (response) => {
-            console.log('Recaptcha verified:', response);
-          },
-        },
-        auth
-      );
-      console.log('Recaptcha setup successful');
-      return recaptchaVerifier;
-    } catch (error) {
-      console.error('Recaptcha setup failed:', error);
-      return null;
-    }
-  };
-  
-
-export { auth, setupRecaptcha, signInWithPhoneNumber };
+ const app = initializeApp(firebaseConfig);
+ const auth = getAuth(app);
+ 
+ export { auth, app };
