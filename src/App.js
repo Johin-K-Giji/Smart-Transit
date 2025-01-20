@@ -12,8 +12,8 @@ const Stack = createStackNavigator();
 const App = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen
+      <Stack.Navigator initialRouteName="HomeScreen">
+        {/* <Stack.Screen
           name="Login"
           component={LoginScreen}
           options={{ headerShown: false }} // Hides header for login
@@ -22,7 +22,7 @@ const App = () => {
           name="OtpVerification"
           component={OtpVerificationScreen}
           options={{ headerShown: false }} // Adds a title for OTP screen
-        />
+        /> */}
         <Stack.Screen
           name="HomeScreen"
           component={HomeScreen}

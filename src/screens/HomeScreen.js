@@ -4,11 +4,15 @@ import { FontAwesome } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import Header from '../components/Header';
+  import {db} from '../Firebase/firebase' 
+import { collection, getDocs } from 'firebase/firestore';
+
 
 const HomeScreen = ({ navigation }) => {
   const [weather, setWeather] = useState(null);
   const [locationDetails, setLocationDetails] = useState(null);
   const [selectedMode, setSelectedMode] = useState('HomeScreen'); // Default mode is 'home'
+  const [buses, setBuses] = useState([]);
 
   const weatherIconMap = {
     Sunny: 'weather-sunny',
@@ -19,6 +23,22 @@ const HomeScreen = ({ navigation }) => {
     Snow: 'weather-snowy',
     Fog: 'weather-fog',
   };
+
+  useEffect(() => {
+    const fetchBuses = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'buses'));
+        const busesList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setBuses(busesList);
+      } catch (error) {
+        console.error('Error fetching buses:', error);
+        Alert.alert('Error', 'Failed to load bus data.');
+      }
+    };
+
+    fetchBuses();
+  }, []);
+
 
   useEffect(() => {
     const fetchLocationAndWeather = async () => {
@@ -49,13 +69,7 @@ const HomeScreen = ({ navigation }) => {
     fetchLocationAndWeather();
   }, []);
 
-  const buses = [
-    { id: '1', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 5 Minutes', seatStatus: 'Available' },
-    { id: '2', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 10 Minutes', seatStatus: 'Partially Filled' },
-    { id: '3', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 15 Minutes', seatStatus: 'Filled' },
-    { id: '4', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 20 Minutes', seatStatus: 'Available' },
-    { id: '5', name: 'Matha Super', route: 'ANG - EKM', time: 'Arrive in 20 Minutes', seatStatus: 'Available' },
-  ];
+  
 
   const renderBusItem = ({ item }) => (
     <View style={styles.busItem}>
@@ -63,9 +77,9 @@ const HomeScreen = ({ navigation }) => {
         <Image source={require('../../assets/images/Main-logo.png')} style={styles.busIcon} />
       </View>
       <View style={styles.busInfo}>
-        <Text style={styles.busName}>{item.name}</Text>
-        <Text style={styles.busRoute}>{item.route}</Text>
-        <Text style={styles.busTime}>{item.time}</Text>
+            <Text style={styles.busText}>{item.bus_name}</Text>
+            <Text style={styles.busText}>Bus Number: {item.bus_number}</Text>
+            <Text style={styles.busText}>Status: {item.status}</Text>
         <Text style={[styles.seatStatus, getSeatStatusStyle(item.seatStatus)]}>
           {item.seatStatus}
         </Text>

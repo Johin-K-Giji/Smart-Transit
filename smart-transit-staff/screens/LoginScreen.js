@@ -1,40 +1,50 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from './firebase'; // Ensure this imports your Firebase configuration
 
 export default function LoginScreen({ navigation }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (username === '' || password === '') {
       Alert.alert('Validation Error', 'Please enter both username and password.');
-    } else {
+      return;
+    }
 
-        console.log(username,password);
-        
-      // Here you can add your authentication logic
-      if (username === 'user' && password === '123456') {
-        navigation.navigate('Location'); // Navigate to the Location Screen
+    try {
+      // Query Firestore to find the matching staff name and bus number
+      const busesRef = collection(db, 'buses');
+      const q = query(busesRef, where('staff_name', '==', username), where('bus_number', '==', password));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // Valid credentials
+        Alert.alert('Login Successful', `Welcome, ${username}!`);
+        navigation.navigate('Location',{ busNumber: password }); // Navigate to the Location Screen
       } else {
+        // Invalid credentials
         Alert.alert('Login Failed', 'Invalid username or password.');
       }
+    } catch (error) {
+      console.error('Error during login:', error);
+      Alert.alert('Error', 'An error occurred while logging in. Please try again.');
     }
   };
 
-
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Staff Login</Text>
       <TextInput
         style={styles.input}
-        placeholder="Username"
+        placeholder="Staff Name"
         value={username}
         onChangeText={setUsername}
       />
       <TextInput
         style={styles.input}
-        placeholder="Password"
+        placeholder="Bus Number"
         value={password}
         onChangeText={setPassword}
         secureTextEntry

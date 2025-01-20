@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import Header from '../components/Header';
 import * as Location from 'expo-location';
-import axios from 'axios';
+import { db } from '../Firebase/firebase'; // Firestore instance
+import { collection, addDoc } from 'firebase/firestore'; // Firestore methods
+import axios from 'axios';  
 
 const ComplaintScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -53,13 +55,26 @@ const ComplaintScreen = ({ navigation }) => {
     fetchLocationAndWeather();
   }, []);
 
-  const handleSubmitComplaint = () => {
+  const handleSubmitComplaint = async () => {
     if (name.trim() && mobile.trim() && vehicleNumber.trim() && complaintText.trim()) {
-      Alert.alert('Complaint Submitted', 'Your complaint has been submitted successfully.');
-      setName('');
-      setMobile('');
-      setVehicleNumber('');
-      setComplaintText('');
+      try {
+        await addDoc(collection(db, 'complaint'), {
+          name,
+          mobile,
+          vehicleNumber,
+          complaintText,
+          timestamp: new Date().toISOString(),
+        });
+
+        Alert.alert('Complaint Submitted', 'Your complaint has been submitted successfully.');
+        setName('');
+        setMobile('');
+        setVehicleNumber('');
+        setComplaintText('');
+      } catch (error) {
+        Alert.alert('Error', 'Failed to submit the complaint.');
+        console.error('Error saving complaint:', error);
+      }
     } else {
       Alert.alert('Error', 'Please fill in all fields.');
     }

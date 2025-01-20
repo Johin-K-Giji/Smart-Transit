@@ -1,7 +1,8 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+// firebase.js
+import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
+// Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAtEBPCdClOfCewMbylWd_Us9Ps4Svf9LI",
     authDomain: "smart-transit-67924.firebaseapp.com",
@@ -12,10 +13,10 @@ const firebaseConfig = {
   };
   
 
- // Initialize Firebase
- const app = initializeApp(firebaseConfig);
- const auth = getAuth(app);
- const db = getFirestore(app);
- 
- 
- export { auth, app , db};
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// Firestore instance
+const db = getFirestore(app);
+
+export { db };
