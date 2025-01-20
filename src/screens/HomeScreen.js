@@ -84,9 +84,12 @@ const HomeScreen = ({ navigation }) => {
           {item.seatStatus}
         </Text>
       </View>
-      <TouchableOpacity style={styles.busArrow}>
-        <FontAwesome name="map-marker" size={20} color="#FFFFFF" />
-      </TouchableOpacity>
+      <TouchableOpacity
+  style={styles.busArrow}
+  onPress={() => navigation.navigate('MapScreen', { bus: item })}
+>
+  <FontAwesome name="map-marker" size={20} color="#FFFFFF" />
+</TouchableOpacity>
     </View>
   );
 

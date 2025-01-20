@@ -6,6 +6,7 @@ import OtpVerificationScreen from './screens/OtpVerificationScreen';
 import HomeScreen from './screens/HomeScreen';
 import BusStopsScreen from './screens/BusStopScreen';
 import ComplaintScreen from './screens/ComplaintScreen';
+import MapScreen from './screens/MapScreen';
 
 const Stack = createStackNavigator();
 
@@ -36,6 +37,11 @@ const App = () => {
         <Stack.Screen
           name="Complaint"
           component={ComplaintScreen}
+          options={{ headerShown: false }} // Adds a title for OTP screen
+        />
+                <Stack.Screen
+          name="MapScreen"
+          component={MapScreen}
           options={{ headerShown: false }} // Adds a title for OTP screen
         />
       </Stack.Navigator>

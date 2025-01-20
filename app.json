@@ -23,6 +23,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsImpl": "mapbox",
+          "ios": {
+            "accessToken": "sk.eyJ1Ijoic21hcnQxOTkiLCJhIjoiY202NWI3c2ZnMXN6djJqc28zcWY4NG5rdSJ9.mgxBFccJ3op6XUWKsMyGhA"
+          },
+          "android": {
+            "accessToken": "sk.eyJ1Ijoic21hcnQxOTkiLCJhIjoiY202NWI3c2ZnMXN6djJqc28zcWY4NG5rdSJ9.mgxBFccJ3op6XUWKsMyGhA"
+          }
+        }
+      ],
+      "expo-build-properties"
+    ]
   }
 }
