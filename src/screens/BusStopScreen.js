@@ -1,22 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import Header from '../components/Header';
 import * as Location from 'expo-location';
 import axios from 'axios';
+import { db } from '../Firebase/firebase'; // Import Firebase configuration
+import { collection, getDocs } from 'firebase/firestore'; // Firestore imports
 
 const BusStopsScreen = ({ navigation }) => {
   const [selectedMode, setSelectedMode] = useState('BusStop');
   const [weather, setWeather] = useState(null);
   const [locationDetails, setLocationDetails] = useState(null);
-
-  // Example bus stops data
-  const busStops = [
-    { id: '1', name: 'Main Square', location: 'City Center' },
-    { id: '2', name: 'North Terminal', location: 'North District' },
-    { id: '3', name: 'South Park', location: 'South Area' },
-    { id: '4', name: 'East Side', location: 'East Suburbs' },
-    { id: '5', name: 'West Avenue', location: 'West District' },
-  ];
+  const [busStops, setBusStops] = useState([]); // New state for bus stops fetched from Firestore
+  const [userDistrict, setUserDistrict] = useState(''); // To store user district for comparison
+  const [loading, setLoading] = useState(true); // New loading state
 
   const weatherIconMap = {
     Sunny: 'weather-sunny',
@@ -29,11 +25,23 @@ const BusStopsScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
+    // Fetch bus stop data from Firebase Firestore
+    const fetchBusStops = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'busStops')); // Assuming 'busStops' is your Firestore collection
+        const busStopsData = querySnapshot.docs.map((doc) => doc.data()); // Extract the data from the documents
+        setBusStops(busStopsData); // Update the state with the fetched bus stops
+      } catch (error) {
+        console.error('Error fetching bus stops from Firestore:', error);
+      }
+    };
+
     const fetchLocationAndWeather = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           console.error('Permission to access location was denied');
+          setLoading(false); // Stop loader if permission is denied
           return;
         }
 
@@ -42,7 +50,12 @@ const BusStopsScreen = ({ navigation }) => {
 
         const locationResponse = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (locationResponse.length > 0) {
-          setLocationDetails(locationResponse[0]);
+          const userLocationData = locationResponse[0];
+          setLocationDetails(userLocationData);
+
+          // Extract district from user location and set it
+          const userDistrict = userLocationData.district || ''; // Assuming district info is in `subregion`
+          setUserDistrict(userDistrict.toLowerCase()); // Convert to lowercase for comparison
         }
 
         const weatherResponse = await axios.get(
@@ -51,11 +64,26 @@ const BusStopsScreen = ({ navigation }) => {
         setWeather(weatherResponse.data);
       } catch (error) {
         console.error('Error fetching location or weather:', error);
+      } finally {
+        setLoading(false); // Stop loader once the data is fetched
       }
     };
 
+    fetchBusStops();
     fetchLocationAndWeather();
   }, []);
+
+  // Filter bus stops based on user location district
+  const filteredBusStops = busStops.filter((busStop) => {
+    const busStopCity = busStop.city ? busStop.city.toLowerCase() : ''; // Lowercase bus stop city
+    const userDistrictLower = userDistrict.toLowerCase(); // Lowercase user district
+    return busStopCity === userDistrictLower; // Compare both cities (lowercased)
+  });
+
+  const openMap = (latitude, longitude) => {
+    const url = `https://www.google.com/maps?q=${latitude},${longitude}`;
+    Linking.openURL(url); // Opens the Google Maps URL
+  };
 
   const renderBusStopItem = ({ item }) => (
     <View style={styles.busStopItem}>
@@ -63,8 +91,11 @@ const BusStopsScreen = ({ navigation }) => {
         <Text style={styles.busStopName}>{item.name}</Text>
         <Text style={styles.busStopLocation}>{item.location}</Text>
       </View>
-      <TouchableOpacity style={styles.busStopAction}>
-        <Text style={styles.busStopActionText}>View</Text>
+      <TouchableOpacity 
+        style={styles.busStopAction} 
+        onPress={() => openMap(item.latitude, item.longitude)} // Open the map when tapped
+      >
+        <Text style={styles.busStopActionText}>View on Map</Text>
       </TouchableOpacity>
     </View>
   );
@@ -83,13 +114,17 @@ const BusStopsScreen = ({ navigation }) => {
       {/* Heading */}
       <Text style={styles.busStopsText}>Bus Stops</Text>
 
-      {/* Bus Stops List */}
-      <FlatList
-        data={busStops}
-        renderItem={renderBusStopItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.busStopsList}
-      />
+      {/* Show loader if data is loading */}
+      {loading ? (
+        <ActivityIndicator size="large" color="#fff" style={styles.loader} />
+      ) : (
+        <FlatList
+          data={filteredBusStops} // Use filtered bus stops here
+          renderItem={renderBusStopItem}
+          keyExtractor={(item, index) => index.toString()} // Use index as key if no unique id is available
+          contentContainerStyle={styles.busStopsList}
+        />
+      )}
     </View>
   );
 };
@@ -97,59 +132,64 @@ const BusStopsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#31473A', // Dark green background for the screen
+    backgroundColor: '#31473A',
   },
   busStopsList: {
     paddingHorizontal: 10,
-    paddingBottom: 20, // Added padding at the bottom for better spacing
+    paddingBottom: 20,
   },
   busStopItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF', // White background for bus stop items
-    borderRadius: 10, // Increased border radius for smoother corners
-    marginVertical: 8, // Space between list items
-    padding: 15, // Internal padding for each item
-    shadowColor: '#000', // Shadow for elevation
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    marginVertical: 8,
+    padding: 15,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3, // Elevation for Android
+    elevation: 3,
   },
   busStopInfo: {
     flex: 1,
-    marginRight: 10, // Space between text and action button
+    marginRight: 10,
   },
   busStopName: {
-    fontSize: 18, // Slightly larger font for bus stop name
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#000', // Black text for name
+    color: '#000',
   },
   busStopLocation: {
     fontSize: 14,
-    color: '#6F6F6F', // Grey text for location
-    marginTop: 5, // Space between name and location
+    color: '#6F6F6F',
+    marginTop: 5,
   },
   busStopAction: {
     paddingVertical: 8,
-    paddingHorizontal: 15, // Adjusted padding for the button
-    backgroundColor: '#4CAF50', // Bright green button color
-    borderRadius: 8, // Rounded corners for the button
+    paddingHorizontal: 15,
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
   },
   busStopActionText: {
-    color: '#FFFFFF', // White text on the button
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 14,
   },
   busStopsText: {
-    fontSize: 26, // Larger and bold heading
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#FFFFFF', // White text for heading
+    color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: 200, // Space above the heading
-    marginBottom: 10, // Space below the heading
-    zIndex: 1, // Ensure the heading stays above other elements
+    marginTop: 200,
+    marginBottom: 10,
+    zIndex: 1,
+  },
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

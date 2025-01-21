@@ -3,12 +3,14 @@ import { View, Text, Button, StyleSheet, Alert, TouchableOpacity } from 'react-n
 import * as Location from 'expo-location';
 import { doc, updateDoc, getDocs, query, collection, where } from 'firebase/firestore';
 import { db } from './firebase';
+import { FontAwesome } from '@expo/vector-icons';
 
 export default function LocationScreen({ route }) {
   const { busNumber } = route.params; // Bus number from login
   const [busDetails, setBusDetails] = useState(null);
   const [location, setLocation] = useState(null);
-  const [status, setStatus] = useState(null); // Bus status
+  const [status, setStatus] = useState('Running'); // Default status set to "Running"
+  const [occupancy, setOccupancy] = useState(null); // Occupancy status
 
   // Fetch bus details
   useEffect(() => {
@@ -21,7 +23,8 @@ export default function LocationScreen({ route }) {
         if (!querySnapshot.empty) {
           const busDoc = querySnapshot.docs[0];
           setBusDetails({ id: busDoc.id, ...busDoc.data() });
-          setStatus(busDoc.data().status);
+          setStatus(busDoc.data().status || 'Running'); // If status exists, set it, otherwise default to "Running"
+          setOccupancy(busDoc.data().occupancy); // Set initial occupancy from DB
         } else {
           Alert.alert('Error', 'No bus found for the given bus number.');
         }
@@ -88,6 +91,21 @@ export default function LocationScreen({ route }) {
     }
   };
 
+  // Handle occupancy selection
+  const handleOccupancyChange = async (selectedOccupancy) => {
+    if (!busDetails) return;
+
+    try {
+      const docRef = doc(db, 'buses', busDetails.id);
+      await updateDoc(docRef, { occupancy: selectedOccupancy });
+      setOccupancy(selectedOccupancy); // Update local state to reflect the change
+      Alert.alert('Occupancy Updated', `Bus occupancy is now set to "${selectedOccupancy}".`);
+    } catch (error) {
+      console.error('Error updating occupancy:', error);
+      Alert.alert('Error', 'Failed to update bus occupancy.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       {busDetails ? (
@@ -115,6 +133,29 @@ export default function LocationScreen({ route }) {
               Latitude: {location.coords.latitude}, Longitude: {location.coords.longitude}
             </Text>
           )}
+
+          <Text style={styles.occupancyTitle}>Occupancy Status</Text>
+          <View style={styles.occupancyContainer}>
+            <TouchableOpacity
+              style={[styles.occupancyIcon, occupancy === 'Overcrowded' && styles.selectedIcon]}
+              onPress={() => handleOccupancyChange('Overcrowded')}
+            >
+              <FontAwesome name="exclamation-circle" size={40} color="red" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.occupancyIcon, occupancy === 'Fully Seated' && styles.selectedIcon]}
+              onPress={() => handleOccupancyChange('Fully Seated')}
+            >
+              <FontAwesome name="check-circle" size={40} color="green" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.occupancyIcon, occupancy === 'Less Busy' && styles.selectedIcon]}
+              onPress={() => handleOccupancyChange('Less Busy')}
+            >
+              <FontAwesome name="thumbs-up" size={40} color="blue" />
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={[styles.button, status === 'Running' ? styles.breakdownButton : styles.runningButton]}
             onPress={toggleBusStatus}
@@ -192,5 +233,27 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#777',
     textAlign: 'center',
+  },
+  occupancyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginVertical: 20,
+    textAlign: 'center',
+  },
+  occupancyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  occupancyIcon: {
+    padding: 15,
+    borderRadius: 50,
+    backgroundColor: '#f0f0f0',
+  },
+  selectedIcon: {
+    backgroundColor: '#d1e7dd',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
   },
 });

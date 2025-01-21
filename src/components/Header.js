@@ -10,6 +10,8 @@ const Header = ({ weather, locationDetails, weatherIconMap, selectedMode, onMode
 
     const { district, city, region } = locationDetails;
 
+    console.log(locationDetails);
+    
     return (
       <Text style={styles.locationDetail}>
         {district || city || 'Unknown City'}, {region || 'Unknown Region'}
