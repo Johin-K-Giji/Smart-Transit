@@ -76,9 +76,25 @@ const BusStopsScreen = ({ navigation }) => {
   // Filter bus stops based on user location district
   const filteredBusStops = busStops.filter((busStop) => {
     const busStopCity = busStop.city ? busStop.city.toLowerCase() : ''; // Lowercase bus stop city
-    const userDistrictLower = userDistrict.toLowerCase(); // Lowercase user district
-    return busStopCity === userDistrictLower; // Compare both cities (lowercased)
+  
+    // Ensure locationDetails exists and extract relevantAddress
+    if (locationDetails?.formattedAddress) {
+      const { formattedAddress } = locationDetails;
+  
+      // Extract and convert relevant parts of the address to lowercase
+      const addressParts = formattedAddress.split(','); // Split by commas
+      const relevantAddress = addressParts.slice(2, 7).join(', ').toLowerCase(); // Use parts 2-7 as lowercase string
+  
+      // Split relevantAddress into individual words
+      const relevantWords = relevantAddress.split(/\s+/); // Split by spaces or whitespace
+  
+      // Check if any word in relevantAddress matches the busStopCity
+      return relevantWords.some((word) => word === busStopCity);
+    }
+  
+    return false; // Return false if locationDetails or formattedAddress is unavailable
   });
+  
 
   const openMap = (latitude, longitude) => {
     const url = `https://www.google.com/maps?q=${latitude},${longitude}`;

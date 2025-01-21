@@ -8,13 +8,15 @@ const Header = ({ weather, locationDetails, weatherIconMap, selectedMode, onMode
   const renderLocation = () => {
     if (!locationDetails) return <Text>Fetching location...</Text>;
 
-    const { district, city, region } = locationDetails;
+    const { formattedAddress } = locationDetails;
 
-    console.log(locationDetails);
-    
+    // Extract the part of the address you need
+    const addressParts = formattedAddress.split(','); // Split the address by commas
+    const relevantAddress = addressParts.slice(2, 7).join(', '); // Join the first 5 parts (as per your requirement)
+
     return (
       <Text style={styles.locationDetail}>
-        {district || city || 'Unknown City'}, {region || 'Unknown Region'}
+        {relevantAddress || 'Unknown Location'}
       </Text>
     );
   };

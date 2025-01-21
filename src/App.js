@@ -7,13 +7,14 @@ import HomeScreen from './screens/HomeScreen';
 import BusStopsScreen from './screens/BusStopScreen';
 import ComplaintScreen from './screens/ComplaintScreen';
 import MapScreen from './screens/MapScreen';
+import LoadingScreen from './screens/LoadingScreen';
 
 const Stack = createStackNavigator();
 
 const App = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="HomeScreen">
+      <Stack.Navigator initialRouteName="loading">
         {/* <Stack.Screen
           name="Login"
           component={LoginScreen}
@@ -24,6 +25,14 @@ const App = () => {
           component={OtpVerificationScreen}
           options={{ headerShown: false }} // Adds a title for OTP screen
         /> */}
+
+<Stack.Screen
+          name="loading"
+          component={LoadingScreen}
+          options={{ headerShown: false }} // Adds a title for OTP screen
+        />
+
+
         <Stack.Screen
           name="HomeScreen"
           component={HomeScreen}

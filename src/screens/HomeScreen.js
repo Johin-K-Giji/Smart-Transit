@@ -42,6 +42,9 @@ const HomeScreen = ({ navigation }) => {
   }, []);
 
   // Fetch location and weather data
+
+  console.log(locationDetails);
+  
   useEffect(() => {
     const fetchLocationAndWeather = async () => {
       try {
@@ -74,31 +77,43 @@ const HomeScreen = ({ navigation }) => {
   // Filter buses based on the user's location
   useEffect(() => {
     if (locationDetails) {
-      // Log the user's district and the bus's major cities
-      console.log("User's location district:", locationDetails.district);
-      
+      const { formattedAddress } = locationDetails;
+  
+      // Extract and convert the relevant part of the address to lowercase
+      const addressParts = formattedAddress.split(','); // Split the address by commas
+      const relevantAddress = addressParts.slice(2, 7).join(', ').toLowerCase(); // Join parts 2 to 7 and convert to lowercase
+  
+      // Log relevant address for debugging
+      console.log('Relevant Address (lowercase):', relevantAddress);
+  
       const filtered = buses.filter((bus) => {
-        // Check if major_cities is an array
         if (Array.isArray(bus.major_cities)) {
-          // Flatten the cities array and split comma-separated strings into city names
-          const citiesArray = bus.major_cities.flatMap(city => 
-            city.split(',').map(cityName => cityName.trim().toLowerCase()) // Split and trim each city name
+          // Flatten the cities array and trim whitespace
+          const citiesArray = bus.major_cities.flatMap(city =>
+            city.split(',').map(cityName => cityName.trim().toLowerCase())
           );
   
-          // Log the cities array for each bus
-          console.log("Bus major cities:", citiesArray);
+          // Check if any word in the relevant address matches a city
+          const relevantWords = relevantAddress.split(/\s+/); // Split address into words
+          const matches = relevantWords.some(word => citiesArray.includes(word));
   
-          // Compare lowercase user's city with the cities array
-          return citiesArray.includes(locationDetails.district.toLowerCase());
+          // Log matching result
+          console.log(`Bus major cities: ${citiesArray}`);
+          console.log(`Relevant words: ${relevantWords}`);
+          console.log(`Matches found: ${matches}`);
+  
+          return matches; // Include bus if there's a match
         }
-        return false; // In case major_cities is not an array
+        return false;
       });
   
-      // Log the filtered buses
-      console.log("Filtered buses:", filtered);
+      // Log filtered buses
+      console.log('Filtered Buses:', filtered);
       setFilteredBuses(filtered);
     }
   }, [locationDetails, buses]);
+  
+  
   
 
   
