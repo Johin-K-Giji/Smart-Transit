@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 import { db } from '../Firebase/firebase'; // Import Firebase configuration
 import { collection, getDocs } from 'firebase/firestore'; // Firestore imports
+import { FontAwesome5 } from '@expo/vector-icons'; // Import FontAwesome5
 
 const BusStopsScreen = ({ navigation }) => {
   const [selectedMode, setSelectedMode] = useState('BusStop');
@@ -13,6 +14,7 @@ const BusStopsScreen = ({ navigation }) => {
   const [busStops, setBusStops] = useState([]); // New state for bus stops fetched from Firestore
   const [userDistrict, setUserDistrict] = useState(''); // To store user district for comparison
   const [loading, setLoading] = useState(true); // New loading state
+  const [darkMode, setDarkMode] = useState(true); // Dark mode state
 
   const weatherIconMap = {
     Sunny: 'weather-sunny',
@@ -94,7 +96,6 @@ const BusStopsScreen = ({ navigation }) => {
   
     return false; // Return false if locationDetails or formattedAddress is unavailable
   });
-  
 
   const openMap = (latitude, longitude) => {
     const url = `https://www.google.com/maps?q=${latitude},${longitude}`;
@@ -102,13 +103,13 @@ const BusStopsScreen = ({ navigation }) => {
   };
 
   const renderBusStopItem = ({ item }) => (
-    <View style={styles.busStopItem}>
+    <View style={[styles.busStopItem, darkMode && styles.darkBusStopItem]}>
       <View style={styles.busStopInfo}>
-        <Text style={styles.busStopName}>{item.name}</Text>
-        <Text style={styles.busStopLocation}>{item.location}</Text>
+        <Text style={[styles.busStopName, darkMode && styles.darkText]}>{item.name}</Text>
+        <Text style={[styles.busStopLocation, darkMode && styles.darkText]}>{item.location}</Text>
       </View>
       <TouchableOpacity 
-        style={styles.busStopAction} 
+        style={[styles.busStopAction, darkMode && styles.darkButton]} 
         onPress={() => openMap(item.latitude, item.longitude)} // Open the map when tapped
       >
         <Text style={styles.busStopActionText}>View on Map</Text>
@@ -116,8 +117,13 @@ const BusStopsScreen = ({ navigation }) => {
     </View>
   );
 
+  // Toggle dark mode
+  const toggleMode = () => {
+    setDarkMode(!darkMode); // Toggle between true/false
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, darkMode && styles.darkMode]}>
       <Header
         selectedMode={selectedMode}
         onModeChange={setSelectedMode}
@@ -127,12 +133,23 @@ const BusStopsScreen = ({ navigation }) => {
         navigation={navigation}
       />
 
+      {/* Dark Mode Toggle Button with FontAwesome5 Icon */}
+      <View style={styles.menuContainer}>
+        <TouchableOpacity style={styles.menuButton} onPress={toggleMode}>
+          <FontAwesome5
+            name={darkMode ? "moon" : "sun"}
+            size={18}
+            color={darkMode ? "#FFDD00" : "#FFA500"}
+          />
+        </TouchableOpacity>
+      </View>
+
       {/* Heading */}
-      <Text style={styles.busStopsText}>Bus Stops</Text>
+      <Text style={[styles.busStopsText, darkMode && styles.darkText]}>Bus Stops</Text>
 
       {/* Show loader if data is loading */}
       {loading ? (
-        <ActivityIndicator size="large" color="#fff" style={styles.loader} />
+        <ActivityIndicator size="large" color={darkMode ? "#FFDD00" : "#000"} style={styles.loader} />
       ) : (
         <FlatList
           data={filteredBusStops} // Use filtered bus stops here
@@ -148,7 +165,10 @@ const BusStopsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#31473A',
+    backgroundColor: 'black',
+  },
+  darkMode: {
+    backgroundColor: '#3A9EC2', // Dark mode background
   },
   busStopsList: {
     paddingHorizontal: 10,
@@ -168,6 +188,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  darkBusStopItem: {
+    backgroundColor: '#2C2C2C',
+  },
   busStopInfo: {
     flex: 1,
     marginRight: 10,
@@ -176,6 +199,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
+  },
+  darkText: {
+    color: '#FFFFFF',
   },
   busStopLocation: {
     fontSize: 14,
@@ -188,24 +214,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     borderRadius: 8,
   },
+  darkButton: {
+    backgroundColor: '#FFDD00',
+  },
   busStopActionText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 14,
   },
   busStopsText: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginTop: 200,
-    marginBottom: 10,
-    zIndex: 1,
+    fontSize: 20,
+    fontWeight: '600',
+    marginLeft: 15,
+    marginBottom: 5,
+    marginTop:190
   },
   loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  menuContainer: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+  },
+  menuButton: {
+    backgroundColor: '#31473A',
+    padding: 5,
+    borderRadius: 50,
   },
 });
 

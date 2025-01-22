@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, Image, TouchableOpacity, Text } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
+import { View, FlatList, StyleSheet, Image, TouchableOpacity, Text, SafeAreaView, StatusBar, Animated, Dimensions } from 'react-native';
+import { FontAwesome5, FontAwesome } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import Header from '../components/Header';
@@ -10,10 +10,12 @@ import { collection, getDocs } from 'firebase/firestore';
 const HomeScreen = ({ navigation }) => {
   const [weather, setWeather] = useState(null);
   const [locationDetails, setLocationDetails] = useState(null);
-  const [selectedMode, setSelectedMode] = useState('HomeScreen'); // Default mode is 'home'
+  const [selectedMode, setSelectedMode] = useState('HomeScreen');
   const [buses, setBuses] = useState([]);
   const [filteredBuses, setFilteredBuses] = useState([]);
-  
+  const [darkMode, setDarkMode] = useState(true); // Dark mode state
+  const [fadeAnim] = useState(new Animated.Value(0));
+
   const weatherIconMap = {
     Sunny: 'weather-sunny',
     'Partly cloudy': 'weather-partly-cloudy',
@@ -38,13 +40,10 @@ const HomeScreen = ({ navigation }) => {
 
     fetchBuses();
     const interval = setInterval(fetchBuses, 60000); // Re-fetch buses every 1 minute
-    return () => clearInterval(interval); // Cleanup the interval on unmount
+    return () => clearInterval(interval);
   }, []);
 
   // Fetch location and weather data
-
-  console.log(locationDetails);
-  
   useEffect(() => {
     const fetchLocationAndWeather = async () => {
       try {
@@ -78,60 +77,41 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     if (locationDetails) {
       const { formattedAddress } = locationDetails;
-  
-      // Extract and convert the relevant part of the address to lowercase
-      const addressParts = formattedAddress.split(','); // Split the address by commas
-      const relevantAddress = addressParts.slice(2, 7).join(', ').toLowerCase(); // Join parts 2 to 7 and convert to lowercase
-  
-      // Log relevant address for debugging
-      console.log('Relevant Address (lowercase):', relevantAddress);
-  
+
+      const addressParts = formattedAddress.split(',');
+      const relevantAddress = addressParts.slice(2, 7).join(', ').toLowerCase();
+
       const filtered = buses.filter((bus) => {
         if (Array.isArray(bus.major_cities)) {
-          // Flatten the cities array and trim whitespace
           const citiesArray = bus.major_cities.flatMap(city =>
             city.split(',').map(cityName => cityName.trim().toLowerCase())
           );
-  
-          // Check if any word in the relevant address matches a city
-          const relevantWords = relevantAddress.split(/\s+/); // Split address into words
+
+          const relevantWords = relevantAddress.split(/\s+/);
           const matches = relevantWords.some(word => citiesArray.includes(word));
-  
-          // Log matching result
-          console.log(`Bus major cities: ${citiesArray}`);
-          console.log(`Relevant words: ${relevantWords}`);
-          console.log(`Matches found: ${matches}`);
-  
-          return matches; // Include bus if there's a match
+          return matches;
         }
         return false;
       });
-  
-      // Log filtered buses
-      console.log('Filtered Buses:', filtered);
+
       setFilteredBuses(filtered);
     }
   }, [locationDetails, buses]);
-  
-  
-  
-
-  
 
   const renderBusItem = ({ item }) => {
     const occupancyStyles = getOccupancyStyle(item.occupancy);
     const statusStyles = getBusStatusStyle(item.bus_status);
-  
+
     return (
-      <View style={[styles.busItem, occupancyStyles.background]}>
+      <Animated.View style={[styles.busItem, occupancyStyles.background, { opacity: fadeAnim }]}>
         <View style={styles.busIconContainer}>
           <Image source={require('../../assets/images/Main-logo.png')} style={styles.busIcon} />
         </View>
         <View style={styles.busInfo}>
-          <Text style={[styles.busName, occupancyStyles.text]}>{item.bus_name}</Text>
+          <Text style={styles.busName}>{item.bus_name}</Text>
           <Text style={[styles.busText, occupancyStyles.text]}>Bus Number: {item.bus_number}</Text>
           <Text style={[styles.busText, occupancyStyles.text]}>Route: {item.route}</Text>
-          <Text style={[styles.busText, occupancyStyles.text]}>Status: <Text style={statusStyles.statusText}>{item.bus_status}</Text></Text>
+          <Text style={[styles.busText, occupancyStyles.text]}>Status: <Text style={statusStyles.statusText}>{item.status }</Text></Text>
           <Text style={[styles.seatStatus, occupancyStyles.text]}>
             {item.occupancy}
           </Text>
@@ -142,7 +122,7 @@ const HomeScreen = ({ navigation }) => {
         >
           <FontAwesome name="map-marker" size={20} color="#FFFFFF" />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -150,23 +130,23 @@ const HomeScreen = ({ navigation }) => {
     switch (occupancy) {
       case 'Overcrowded':
         return {
-          background: { backgroundColor: '#D32F2F' }, // Red background
-          text: { color: '#FFFFFF' } // White text
+          background: { backgroundColor: '#D32F2F' },
+          text: { color: '#FFFFFF' }
         };
       case 'Fully Seated':
         return {
-          background: { backgroundColor: '#4CAF50' }, // Green background
-          text: { color: '#FFFFFF' } // White text
+          background: { backgroundColor: '#4CAF50' },
+          text: { color: '#FFFFFF' }
         };
       case 'Less Busy':
         return {
-          background: { backgroundColor: '#2196F3' }, // Blue background
-          text: { color: '#FFFFFF' } // White text
+          background: { backgroundColor: '#2196F3' },
+          text: { color: '#FFFFFF' }
         };
       default:
         return {
-          background: { backgroundColor: '#FFFFFF' }, // Default white background
-          text: { color: '#000' } // Default black text
+          background: { backgroundColor: '#FFFFFF' },
+          text: { color: '#000' }
         };
     }
   };
@@ -175,35 +155,62 @@ const HomeScreen = ({ navigation }) => {
     switch (status) {
       case 'Running':
         return {
-          statusText: { color: '#388E3C' } // Dark green text
+          statusText: { color: '#388E3C' }
         };
       case 'Breakdown':
         return {
-          statusText: { color: '#B71C1C' } // Dark red text
+          statusText: { color: '#B71C1C' }
         };
       case 'Delayed':
         return {
-          statusText: { color: '#D84315' } // Dark orange text
+          statusText: { color: '#D84315' }
         };
       default:
         return {
-          statusText: { color: '#FF6F00' } // Dark yellow text
+          statusText: { color: '#FF6F00' }
         };
     }
   };
 
+  // Dark/Light mode toggle
+  const toggleMode = () => {
+    setDarkMode(!darkMode);
+  };
+
+  // Fade-in animation
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, darkMode && styles.darkMode]}>
+      <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} backgroundColor={darkMode ? "#212121" : "#FFFFFF"} />
+
       <Header
         weather={weather}
         locationDetails={locationDetails}
         weatherIconMap={weatherIconMap}
         selectedMode={selectedMode}
         onModeChange={setSelectedMode}
-        navigation={navigation} // Pass navigation prop to Header
+        navigation={navigation}
       />
 
-      <Text style={styles.busStopsText}>Buses</Text>
+      {/* Overlay Burger Menu and Dark Mode Toggle Button */}
+      <View style={styles.menuContainer}>
+        <TouchableOpacity style={styles.menuButton} onPress={toggleMode}>
+          <FontAwesome5
+            name={darkMode ? "moon" : "sun"}
+            size={18}
+            color={darkMode ? "#FFDD00" : "#FFA500"}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={[styles.busStopsText, { color: darkMode ? '#000' : '#fff' }]}>Nearby Buses</Text>
 
       <FlatList
         data={filteredBuses}
@@ -211,37 +218,52 @@ const HomeScreen = ({ navigation }) => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.busList}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 40, // Space for header
+    backgroundColor: 'black',
+    paddingBottom: 20,
+  },
+  darkMode: {
+    backgroundColor: '#3A9EC2', // Dark mode background
+  },
+  menuContainer: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+  },
+  menuButton: {
     backgroundColor: '#31473A',
-    paddingTop: 190, // Space for header
+    padding: 5,
+    borderRadius: 50,
   },
   busStopsText: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginVertical: 20,
+    fontSize: 20,
+    fontWeight: '600',
+    marginLeft: 15,
+    marginBottom: 5,
+    marginTop:160
   },
   busList: {
-    backgroundColor: '#31473A',
     padding: 10,
   },
   busItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8, // Reduced size for a cuter look
-    marginVertical: 8, // Reduced margin for a more compact view
-    padding: 12, // Reduced padding
+    borderRadius: 15,
+    marginVertical: 10,
+    padding: 5,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowRadius: 8,
     elevation: 4,
   },
   busIconContainer: {
@@ -249,36 +271,36 @@ const styles = StyleSheet.create({
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#C1C1C1',
-    borderRadius: 8, // Rounded for cuteness
-    marginRight: 12,
+    backgroundColor: '#EDEDED',
+    borderRadius: 15,
+    marginRight: 15,
   },
   busIcon: {
-    width: 30,
-    height: 30,
+    width: 35,
+    height: 35,
     resizeMode: 'contain',
   },
   busInfo: {
     flex: 1,
-    marginRight: 12,
   },
   busName: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: ' #1b1716 ',
   },
   busText: {
-    fontSize: 14,
-    marginVertical: 4,
+    fontSize: 12,
+    marginVertical: 5,
   },
   seatStatus: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
-    marginTop: 8,
+    marginTop: 10,
   },
   busArrow: {
-    backgroundColor: '#31473A',
-    padding: 8,
-    borderRadius: 50,
+    backgroundColor: '#580e1b',
+    padding: 12,
+    borderRadius: 30,
   },
 });
 

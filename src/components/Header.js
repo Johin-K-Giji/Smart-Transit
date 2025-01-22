@@ -127,11 +127,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     right: 0,
-    width: '90%',
+    width: '100%',
     paddingHorizontal: 20,
-    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 60,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   weatherContainer: {
     flexDirection: 'row',
@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
   weatherInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft:50
   },
   temperature: {
     fontSize: 30,
@@ -157,12 +158,12 @@ const styles = StyleSheet.create({
   locationLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#6F6F6F',
+    color: '#000000',
     marginBottom: 5,
   },
   locationDetail: {
     fontSize: 14,
-    color: '#000000',
+    color: '#003233',
     textAlign: 'center',
   },
   hamburgerIconWrapper: {

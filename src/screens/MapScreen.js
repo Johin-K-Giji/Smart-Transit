@@ -1,21 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Alert, Text, Vibration } from 'react-native';
-import MapView, { Marker, Polyline, AnimatedRegion } from 'react-native-maps';
+import { StyleSheet, View, Alert, Text, Vibration, Button } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../Firebase/firebase';
 import * as Location from 'expo-location';
 import haversine from 'haversine-distance';
+import * as Speech from 'expo-speech';
+
+const GOOGLE_MAPS_API_KEY = 'AIzaSyCZNsXmvcKmBuJ9JCqlk2a2hk8jGx_Dv_k'; // Add your Google Maps API key here
 
 const MapScreen = () => {
   const [busLocation, setBusLocation] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [distance, setDistance] = useState(0);
   const [arrivalTime, setArrivalTime] = useState(0);
-  const [busMarker, setBusMarker] = useState(null);
-  const [path, setPath] = useState([]); // To store the path for the bus
-  const averageSpeed = 40; // Average bus speed in km/h
+  const [showAlert, setShowAlert] = useState(false);
 
-  // Create a reference for the MapView component
+  const averageSpeed = 40; // Average bus speed in km/h
   const mapView = useRef(null);
 
   // Fetch user's current location
@@ -40,34 +42,29 @@ const MapScreen = () => {
     fetchUserLocation();
   }, []);
 
-  // Fetch bus location and update in real-time
+  // Fetch bus location and calculate distance
   useEffect(() => {
     const fetchBusLocation = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'buses'));
         const busData = querySnapshot.docs[0]?.data();
         if (busData && busData.current_location) {
-          const newBusLocation = busData.current_location;
-          setBusLocation(newBusLocation);
+          setBusLocation(busData.current_location);
 
-          // Update the bus marker
-          setBusMarker(new AnimatedRegion({
-            latitude: newBusLocation.latitude,
-            longitude: newBusLocation.longitude,
-          }));
-
-          // Calculate distance and arrival time
+          // Calculate distance and estimated time
           if (userLocation) {
-            const dist = haversine(userLocation, newBusLocation) / 1000; // Convert meters to km
-            setDistance(dist.toFixed(2)); // Round to 2 decimal places
-            setArrivalTime((dist / averageSpeed).toFixed(2)); // Time in hours
-          }
+            const dist = haversine(userLocation, busData.current_location) / 1000; // Convert to km
+            setDistance(dist.toFixed(2)); // Keep 2 decimal places
 
-          // Check if the bus is within 200 meters of the user and trigger vibration alert
-          const userDistance = haversine(userLocation, newBusLocation) / 1000; // Convert meters to km
-          if (userDistance <= 0.2) { // 200 meters distance
-            Vibration.vibrate();
-            Alert.alert('Alert', 'The bus is within 200 meters!');
+            const time = dist / averageSpeed; // Time in hours
+            setArrivalTime(time < 1 ? (time * 60).toFixed(0) : time.toFixed(2)); // Minutes if <1 hour
+
+            // Trigger alert if within 200 meters
+            if (dist <= 0.2 && !showAlert) {
+              setShowAlert(true);
+              Vibration.vibrate();
+              Speech.speak('The bus is within 200 meters of your location!');
+            }
           }
         }
       } catch (error) {
@@ -77,39 +74,20 @@ const MapScreen = () => {
 
     const interval = setInterval(fetchBusLocation, 5000); // Poll every 5 seconds
     return () => clearInterval(interval);
-  }, [userLocation]);
+  }, [userLocation, showAlert]);
 
-  // Move the map to the bus location
-  useEffect(() => {
-    if (busLocation && userLocation) {
-      mapView.current.animateToRegion({
-        latitude: busLocation.latitude,
-        longitude: busLocation.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      }, 500);
-    }
-  }, [busLocation]);
-
-  // Update the path dynamically with user and bus location
-  const pathCoordinates = userLocation && busLocation ? [
-    { latitude: userLocation.latitude, longitude: userLocation.longitude },
-    { latitude: busLocation.latitude, longitude: busLocation.longitude }
-  ] : [];
-
-  // Format the distance (in meters if less than 1km)
-  const formattedDistance = distance < 1 ? `${(distance * 1000).toFixed(0)} meters` : `${distance} km`;
-
-  // Format the arrival time (in minutes if less than 1 hour)
-  const formattedArrivalTime = arrivalTime < 1 ? `${(arrivalTime * 60).toFixed(0)} minutes` : `${arrivalTime} hours`;
+  const acknowledgeAlert = () => {
+    setShowAlert(false);
+    Speech.stop(); // Stop voice alert
+  };
 
   return (
     <View style={styles.container}>
       {userLocation && busLocation ? (
         <>
           <MapView
+            ref={mapView}
             style={styles.map}
-            ref={mapView} // Set the ref here
             initialRegion={{
               latitude: userLocation.latitude,
               longitude: userLocation.longitude,
@@ -117,35 +95,41 @@ const MapScreen = () => {
               longitudeDelta: 0.05,
             }}
             showsUserLocation
-            followsUserLocation
           >
-            {/* Bus Marker */}
-            <Marker.Animated
-              coordinate={busMarker}
-              title="Bus Location"
-              description="This is the moving bus."
-            >
-              <View style={styles.busMarker} />
-            </Marker.Animated>
-
             {/* User Marker */}
-            <Marker coordinate={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}>
+            <Marker coordinate={userLocation}>
               <View style={styles.userMarker} />
             </Marker>
 
-            {/* Polyline for path */}
-            <Polyline
-              coordinates={pathCoordinates}
-              strokeColor="red"
+            {/* Bus Marker */}
+            <Marker coordinate={busLocation}>
+              <View style={styles.busMarker} />
+            </Marker>
+
+            {/* Directions */}
+            <MapViewDirections
+              origin={userLocation}
+              destination={busLocation}
+              apikey={GOOGLE_MAPS_API_KEY} // Google Maps API key
               strokeWidth={4}
+              strokeColor="blue"
+              onError={(error) => console.error('Error fetching directions:', error)}
             />
           </MapView>
 
-          {/* Display distance and arrival time */}
+          {/* Info Container */}
           <View style={styles.infoContainer}>
-            <Text style={styles.infoText}>Distance: {formattedDistance}</Text>
-            <Text style={styles.infoText}>Arrival Time: {formattedArrivalTime}</Text>
+            <Text style={styles.infoText}>Distance: {distance < 1 ? `${(distance * 1000).toFixed(0)} meters` : `${distance} km`}</Text>
+            <Text style={styles.infoText}>Arrival Time: {arrivalTime} {arrivalTime < 1 ? 'minutes' : 'hours'}</Text>
           </View>
+
+          {/* Alert Message */}
+          {showAlert && (
+            <View style={styles.alertContainer}>
+              <Text style={styles.alertText}>The bus is within 200 meters!</Text>
+              <Button title="OK" onPress={acknowledgeAlert} />
+            </View>
+          )}
         </>
       ) : (
         <View style={styles.loader}>
@@ -198,6 +182,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  alertContainer: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    borderRadius: 8,
+    padding: 10,
+  },
+  alertText: {
+    color: 'white',
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 10,
   },
 });
 

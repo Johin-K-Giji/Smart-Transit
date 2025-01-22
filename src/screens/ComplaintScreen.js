@@ -139,7 +139,7 @@ const ComplaintScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#31473A',
+    backgroundColor: 'black',
   },
   contentContainer: {
     padding: 20,
