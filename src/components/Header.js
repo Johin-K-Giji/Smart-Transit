@@ -1,81 +1,106 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, Linking } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  Linking,
+} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const Header = ({ weather, locationDetails, weatherIconMap, selectedMode, onModeChange, navigation }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // To manage menu toggle
+const weatherIconMap = {
+  Sunny: "weather-sunny",
+  Clear: "weather-sunny",
+  "Partly cloudy": "weather-partly-cloudy",
+  Cloudy: "weather-cloudy",
+  Overcast: "weather-cloudy",
+  Mist: "weather-fog",
+  Fog: "weather-fog",
+  "Patchy rain possible": "weather-partly-rainy",
+  "Light rain": "weather-rainy",
+  Rain: "weather-rainy",
+  "Heavy rain": "weather-pouring",
+  Thunderstorm: "weather-lightning",
+  Snow: "weather-snowy",
+  "Heavy snow": "weather-snowy-heavy",
+};
+
+const Header = ({ weather, locationDetails, selectedMode, onModeChange, navigation }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const renderLocation = () => {
     if (!locationDetails) return <Text>Fetching location...</Text>;
 
     const { formattedAddress } = locationDetails;
-
-    // Extract the part of the address you need
-    const addressParts = formattedAddress.split(','); // Split the address by commas
-    const relevantAddress = addressParts.slice(2, 7).join(', '); // Join the first 5 parts (as per your requirement)
+    const addressParts = formattedAddress.split(",");
+    const relevantAddress = addressParts.slice(0, 5).join(", ");
 
     return (
-      <Text style={styles.locationDetail}>
-        {relevantAddress || 'Unknown Location'}
-      </Text>
+      <View style={styles.locationBox}>
+        <Text style={styles.locationDetail}>
+          {relevantAddress || "Unknown Location"}
+        </Text>
+      </View>
     );
   };
 
   const transportModes = [
-    { id: 'HomeScreen', label: 'Home', icon: 'home' },
-    { id: 'BusStop', label: 'Bus Stops', icon: 'bus' },
-    { id: 'Complaint', label: 'Complaint', icon: 'alert-circle' },
-    { id: 'EmergencyCall', label: 'Emergency Call', icon: 'phone' }, // Emergency Call Icon
+    { id: "HomeScreen", label: "Home", icon: "home" },
+    { id: "BusStop", label: "Bus Stops", icon: "bus" },
+    { id: "Complaint", label: "Complaint", icon: "alert-circle" },
+    { id: "EmergencyCall", label: "Emergency Call", icon: "phone" },
   ];
 
   const handleModeChange = (modeId) => {
-    if (modeId === 'EmergencyCall') {
+    if (modeId === "EmergencyCall") {
       handleEmergencyCall();
       return;
     }
 
     onModeChange(modeId);
-    navigation.navigate(modeId); // Navigate to the corresponding screen
-    setIsMenuOpen(false); // Close menu after selection
+    navigation.navigate(modeId);
+    setIsMenuOpen(false);
   };
 
   const handleEmergencyCall = () => {
-    const phoneNumber = 'tel:1234567890'; // Replace with your emergency number
+    const phoneNumber = "tel:1234567890";
     Linking.openURL(phoneNumber).catch(() => {
-      Alert.alert('Error', 'Unable to make a call. Please check your device settings.');
+      Alert.alert(
+        "Error",
+        "Unable to make a call. Please check your device settings."
+      );
     });
   };
 
   return (
-    <View style={styles.subContainer}>
-      {/* Hamburger Icon to toggle menu */}
-      <TouchableOpacity onPress={() => setIsMenuOpen(!isMenuOpen)} style={styles.hamburgerIconWrapper}>
-        <MaterialCommunityIcons name="menu" size={30} color="black" />
-      </TouchableOpacity>
+    <View style={styles.headerContainer}>
+      {/* Location Box */}
+      {renderLocation()}
 
       {/* Weather Info */}
       <View style={styles.weatherContainer}>
-        <View style={styles.weatherInfo}>
-          {weather ? (
-            <>
-              <Text style={styles.temperature}>{Math.round(weather.current.temp_c)}°C</Text>
-              <MaterialCommunityIcons
-                name={weatherIconMap[weather.current.condition.text] || 'weather-cloudy'}
-                size={30}
-                color="black"
-              />
-            </>
-          ) : (
-            <Text>Loading...</Text>
-          )}
-        </View>
+        {weather ? (
+          <>
+            <MaterialCommunityIcons
+              name={weatherIconMap[weather.current.condition.text] || "weather-cloudy"}
+              size={30}
+              color="#FFD700"
+            />
+            <Text style={styles.temperature}>
+              {Math.round(weather.current.temp_c)}°C
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.loadingText}>Loading...</Text>
+        )}
       </View>
 
-      {/* Location Info */}
-      <View style={styles.locationContainer}>
-        <Text style={styles.locationLabel}>Your Location:</Text>
-        {renderLocation()}
-      </View>
+      {/* Hamburger Icon */}
+      <TouchableOpacity onPress={() => setIsMenuOpen(!isMenuOpen)} style={styles.hamburgerIcon}>
+        <MaterialCommunityIcons name="menu" size={30} color="white" />
+      </TouchableOpacity>
 
       {/* Burger Menu Modal */}
       <Modal visible={isMenuOpen} animationType="slide" transparent={true}>
@@ -94,8 +119,8 @@ const Header = ({ weather, locationDetails, weatherIconMap, selectedMode, onMode
               >
                 <MaterialCommunityIcons
                   name={mode.icon}
-                  size={30}
-                  color={selectedMode === mode.id ? '#FFFFFF' : '#000'}
+                  size={28}
+                  color={selectedMode === mode.id ? "#007AFF" : "#333"}
                 />
                 <Text
                   style={[
@@ -109,10 +134,7 @@ const Header = ({ weather, locationDetails, weatherIconMap, selectedMode, onMode
             ))}
 
             {/* Close Modal Button */}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setIsMenuOpen(false)}
-            >
+            <TouchableOpacity style={styles.closeButton} onPress={() => setIsMenuOpen(false)}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -123,103 +145,107 @@ const Header = ({ weather, locationDetails, weatherIconMap, selectedMode, onMode
 };
 
 const styles = StyleSheet.create({
-  subContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '100%',
+  headerContainer: {
+    width: "100%",
+    backgroundColor: "black",
+    paddingVertical: 30,
+    alignItems: "center",
+    position: "relative",
+  },
+  locationBox: {
+    backgroundColor: "#F8F8F8",
+    paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  weatherContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    marginTop: 10,
-  },
-  weatherInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft:50
-  },
-  temperature: {
-    fontSize: 30,
-    marginRight: 10,
-    color: '#FDD300',
-  },
-  locationContainer: {
-    alignItems: 'center',
-    marginTop: 10,
-    padding: 5,
-  },
-  locationLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 5,
+    borderRadius: 10,
+    marginBottom: 10,
   },
   locationDetail: {
     fontSize: 14,
-    color: '#003233',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#333",
   },
-  hamburgerIconWrapper: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    zIndex: 10,
+  weatherContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
   },
-  transportModeWrapper: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#4CAF50',
-    borderRadius: 10,
-    width: 100,
-    height: 100,
-    marginVertical: 10,
+  temperature: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFD700",
+    marginLeft: 10,
   },
-  activeMode: {
-    backgroundColor: '#31473A',
+  loadingText: {
+    color: "black",
   },
-  modeLabel: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    marginTop: 5,
-  },
-  activeModeLabel: {
-    color: '#FFFFFF',
+  hamburgerIcon: {
+    position: "absolute",
+    top: 0,
+    right: 15,
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.3)", // Subtle overlay
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "#FFFFFF",
     padding: 20,
-    width: 300,
-    borderRadius: 10,
-    alignItems: 'center',
+    width: 320,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
   },
   modalHeader: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
+    color: "#333",
+  },
+  transportModeWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    padding: 12,
+    width: "100%",
+    borderRadius: 8,
+    backgroundColor: "#F8F8F8",
+    marginVertical: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  activeMode: {
+    backgroundColor: "#E6F7FF",
+  },
+  modeLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+    marginLeft: 12,
+  },
+  activeModeLabel: {
+    color: "#007AFF",
   },
   closeButton: {
     marginTop: 20,
-    padding: 10,
-    backgroundColor: '#FF6347',
-    borderRadius: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    backgroundColor: "#FF4D4D",
+    borderRadius: 6,
   },
   closeButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

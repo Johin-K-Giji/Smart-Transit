@@ -73,31 +73,41 @@ const HomeScreen = ({ navigation }) => {
     fetchLocationAndWeather();
   }, []);
 
-  // Filter buses based on the user's location
   useEffect(() => {
     if (locationDetails) {
       const { formattedAddress } = locationDetails;
-
-      const addressParts = formattedAddress.split(',');
-      const relevantAddress = addressParts.slice(2, 7).join(', ').toLowerCase();
-
+  
+      // Remove extra commas properly before processing
+      const addressParts = formattedAddress.split(',').map(part => part.trim());
+  
+      // Join back into a clean string and remove all commas before splitting words
+      const relevantAddress = addressParts.slice(0, 7).join(' ').toLowerCase();
+  
+      // Now split into individual words properly
+      const relevantWords = relevantAddress.replace(/,/g, '').split(/\s+/); 
+  
       const filtered = buses.filter((bus) => {
         if (Array.isArray(bus.major_cities)) {
           const citiesArray = bus.major_cities.flatMap(city =>
             city.split(',').map(cityName => cityName.trim().toLowerCase())
           );
-
-          const relevantWords = relevantAddress.split(/\s+/);
+  
           const matches = relevantWords.some(word => citiesArray.includes(word));
+          console.log(relevantWords, citiesArray);
+  
           return matches;
         }
         return false;
       });
-
+  
       setFilteredBuses(filtered);
     }
   }, [locationDetails, buses]);
+  
+  
+  
 
+  console.log("Location",locationDetails)
   const renderBusItem = ({ item }) => {
     const occupancyStyles = getOccupancyStyle(item.occupancy);
     const statusStyles = getBusStatusStyle(item.bus_status);
@@ -117,11 +127,15 @@ const HomeScreen = ({ navigation }) => {
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.busArrow}
-          onPress={() => navigation.navigate('MapScreen', { bus: item })}
-        >
-          <FontAwesome name="map-marker" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+  style={styles.busArrow}
+  onPress={() => navigation.navigate('MapScreen', { 
+    busId: item.id, // Pass the bus_id to MapScreen
+    busName: item.bus_name
+  })}
+>
+  <FontAwesome name="map-marker" size={20} color="#FFFFFF" />
+</TouchableOpacity>
+
       </Animated.View>
     );
   };
@@ -200,7 +214,7 @@ const HomeScreen = ({ navigation }) => {
       />
 
       {/* Overlay Burger Menu and Dark Mode Toggle Button */}
-      <View style={styles.menuContainer}>
+      {/* <View style={styles.menuContainer}>
         <TouchableOpacity style={styles.menuButton} onPress={toggleMode}>
           <FontAwesome5
             name={darkMode ? "moon" : "sun"}
@@ -208,9 +222,9 @@ const HomeScreen = ({ navigation }) => {
             color={darkMode ? "#FFDD00" : "#FFA500"}
           />
         </TouchableOpacity>
-      </View>
+      </View> */}
 
-      <Text style={[styles.busStopsText, { color: darkMode ? '#000' : '#fff' }]}>Nearby Buses</Text>
+      <Text style={[styles.busStopsText, { color: '#fff' }]}>Nearby Buses</Text>
 
       <FlatList
         data={filteredBuses}
@@ -230,7 +244,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   darkMode: {
-    backgroundColor: '#3A9EC2', // Dark mode background
+    backgroundColor: 'black', // Dark mode background
   },
   menuContainer: {
     position: 'absolute',
@@ -248,7 +262,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 15,
     marginBottom: 5,
-    marginTop:160
+    marginTop:10
   },
   busList: {
     padding: 10,

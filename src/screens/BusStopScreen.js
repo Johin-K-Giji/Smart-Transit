@@ -78,17 +78,20 @@ const BusStopsScreen = ({ navigation }) => {
   // Filter bus stops based on user location district
   const filteredBusStops = busStops.filter((busStop) => {
     const busStopCity = busStop.city ? busStop.city.toLowerCase() : ''; // Lowercase bus stop city
-  
+    console.log("BusStop",busStopCity);
+    
     // Ensure locationDetails exists and extract relevantAddress
     if (locationDetails?.formattedAddress) {
       const { formattedAddress } = locationDetails;
   
       // Extract and convert relevant parts of the address to lowercase
       const addressParts = formattedAddress.split(','); // Split by commas
-      const relevantAddress = addressParts.slice(2, 7).join(', ').toLowerCase(); // Use parts 2-7 as lowercase string
+      const relevantAddress = addressParts.slice(0, 7).join(', ').toLowerCase(); // Use parts 2-7 as lowercase string
   
       // Split relevantAddress into individual words
-      const relevantWords = relevantAddress.split(/\s+/); // Split by spaces or whitespace
+      const relevantWords = relevantAddress.replace(/,/g, '').split(/\s+/); 
+      console.log(relevantWords);
+      
   
       // Check if any word in relevantAddress matches the busStopCity
       return relevantWords.some((word) => word === busStopCity);
@@ -117,10 +120,7 @@ const BusStopsScreen = ({ navigation }) => {
     </View>
   );
 
-  // Toggle dark mode
-  const toggleMode = () => {
-    setDarkMode(!darkMode); // Toggle between true/false
-  };
+  
 
   return (
     <View style={[styles.container, darkMode && styles.darkMode]}>
@@ -133,16 +133,7 @@ const BusStopsScreen = ({ navigation }) => {
         navigation={navigation}
       />
 
-      {/* Dark Mode Toggle Button with FontAwesome5 Icon */}
-      <View style={styles.menuContainer}>
-        <TouchableOpacity style={styles.menuButton} onPress={toggleMode}>
-          <FontAwesome5
-            name={darkMode ? "moon" : "sun"}
-            size={18}
-            color={darkMode ? "#FFDD00" : "#FFA500"}
-          />
-        </TouchableOpacity>
-      </View>
+  
 
       {/* Heading */}
       <Text style={[styles.busStopsText, darkMode && styles.darkText]}>Bus Stops</Text>
@@ -166,9 +157,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
+    paddingTop: 40, 
   },
   darkMode: {
-    backgroundColor: '#3A9EC2', // Dark mode background
+    backgroundColor: 'black', // Dark mode background
   },
   busStopsList: {
     paddingHorizontal: 10,
@@ -227,7 +219,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 15,
     marginBottom: 5,
-    marginTop:190
+    marginTop:10
   },
   loader: {
     flex: 1,
