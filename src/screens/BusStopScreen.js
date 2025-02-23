@@ -3,36 +3,29 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity, Linking, ActivityIn
 import Header from '../components/Header';
 import * as Location from 'expo-location';
 import axios from 'axios';
-import { db } from '../Firebase/firebase'; // Import Firebase configuration
-import { collection, getDocs } from 'firebase/firestore'; // Firestore imports
-import { FontAwesome5 } from '@expo/vector-icons'; // Import FontAwesome5
+import { db } from '../Firebase/firebase'; 
+import { collection, getDocs } from 'firebase/firestore'; 
 
 const BusStopsScreen = ({ navigation }) => {
   const [selectedMode, setSelectedMode] = useState('BusStop');
   const [weather, setWeather] = useState(null);
   const [locationDetails, setLocationDetails] = useState(null);
-  const [busStops, setBusStops] = useState([]); // New state for bus stops fetched from Firestore
-  const [userDistrict, setUserDistrict] = useState(''); // To store user district for comparison
-  const [loading, setLoading] = useState(true); // New loading state
-  const [darkMode, setDarkMode] = useState(true); // Dark mode state
-
-  const weatherIconMap = {
-    Sunny: 'weather-sunny',
-    'Partly cloudy': 'weather-partly-cloudy',
-    Cloudy: 'weather-cloudy',
-    Rain: 'weather-rainy',
-    Thunderstorm: 'weather-lightning',
-    Snow: 'weather-snowy',
-    Fog: 'weather-fog',
-  };
+  const [busStops, setBusStops] = useState([]);
+  const [userLocation, setUserLocation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(true);
 
   useEffect(() => {
-    // Fetch bus stop data from Firebase Firestore
     const fetchBusStops = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'busStops')); // Assuming 'busStops' is your Firestore collection
-        const busStopsData = querySnapshot.docs.map((doc) => doc.data()); // Extract the data from the documents
-        setBusStops(busStopsData); // Update the state with the fetched bus stops
+        const querySnapshot = await getDocs(collection(db, 'busStops'));
+        const busStopsData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          latitude: parseFloat(doc.data().latitude),  // Convert to number
+          longitude: parseFloat(doc.data().longitude), // Convert to number
+        }));
+        setBusStops(busStopsData);
       } catch (error) {
         console.error('Error fetching bus stops from Firestore:', error);
       }
@@ -43,21 +36,17 @@ const BusStopsScreen = ({ navigation }) => {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           console.error('Permission to access location was denied');
-          setLoading(false); // Stop loader if permission is denied
+          setLoading(false);
           return;
         }
 
         const userLocation = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = userLocation.coords;
+        setUserLocation({ latitude, longitude });
 
         const locationResponse = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (locationResponse.length > 0) {
-          const userLocationData = locationResponse[0];
-          setLocationDetails(userLocationData);
-
-          // Extract district from user location and set it
-          const userDistrict = userLocationData.district || ''; // Assuming district info is in `subregion`
-          setUserDistrict(userDistrict.toLowerCase()); // Convert to lowercase for comparison
+          setLocationDetails(locationResponse[0]);
         }
 
         const weatherResponse = await axios.get(
@@ -67,7 +56,7 @@ const BusStopsScreen = ({ navigation }) => {
       } catch (error) {
         console.error('Error fetching location or weather:', error);
       } finally {
-        setLoading(false); // Stop loader once the data is fetched
+        setLoading(false);
       }
     };
 
@@ -75,52 +64,49 @@ const BusStopsScreen = ({ navigation }) => {
     fetchLocationAndWeather();
   }, []);
 
-  // Filter bus stops based on user location district
-  const filteredBusStops = busStops.filter((busStop) => {
-    const busStopCity = busStop.city ? busStop.city.toLowerCase() : ''; // Lowercase bus stop city
-    console.log("BusStop",busStopCity);
-    
-    // Ensure locationDetails exists and extract relevantAddress
-    if (locationDetails?.formattedAddress) {
-      const { formattedAddress } = locationDetails;
-  
-      // Extract and convert relevant parts of the address to lowercase
-      const addressParts = formattedAddress.split(','); // Split by commas
-      const relevantAddress = addressParts.slice(0, 7).join(', ').toLowerCase(); // Use parts 2-7 as lowercase string
-  
-      // Split relevantAddress into individual words
-      const relevantWords = relevantAddress.replace(/,/g, '').split(/\s+/); 
-      console.log(relevantWords);
-      
-  
-      // Check if any word in relevantAddress matches the busStopCity
-      return relevantWords.some((word) => word === busStopCity);
-    }
-  
-    return false; // Return false if locationDetails or formattedAddress is unavailable
-  });
+  // Function to calculate distance using the Haversine formula
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
+  // Sort bus stops by distance
+  const sortedBusStops = userLocation
+    ? [...busStops].map((busStop) => ({
+        ...busStop,
+        distance: calculateDistance(userLocation.latitude, userLocation.longitude, busStop.latitude, busStop.longitude),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+    : busStops;
 
   const openMap = (latitude, longitude) => {
     const url = `https://www.google.com/maps?q=${latitude},${longitude}`;
-    Linking.openURL(url); // Opens the Google Maps URL
+    Linking.openURL(url);
   };
 
   const renderBusStopItem = ({ item }) => (
     <View style={[styles.busStopItem, darkMode && styles.darkBusStopItem]}>
       <View style={styles.busStopInfo}>
         <Text style={[styles.busStopName, darkMode && styles.darkText]}>{item.name}</Text>
-        <Text style={[styles.busStopLocation, darkMode && styles.darkText]}>{item.location}</Text>
+        <Text style={[styles.busStopLocation, darkMode && styles.darkText]}>Distance: {item.distance.toFixed(2)} km</Text>
       </View>
       <TouchableOpacity 
         style={[styles.busStopAction, darkMode && styles.darkButton]} 
-        onPress={() => openMap(item.latitude, item.longitude)} // Open the map when tapped
+        onPress={() => openMap(item.latitude, item.longitude)}
       >
         <Text style={styles.busStopActionText}>View on Map</Text>
       </TouchableOpacity>
     </View>
   );
-
-  
 
   return (
     <View style={[styles.container, darkMode && styles.darkMode]}>
@@ -129,23 +115,18 @@ const BusStopsScreen = ({ navigation }) => {
         onModeChange={setSelectedMode}
         weather={weather}
         locationDetails={locationDetails}
-        weatherIconMap={weatherIconMap}
         navigation={navigation}
       />
 
-  
+      <Text style={[styles.busStopsText, darkMode && styles.darkText]}>Nearest Bus Stops</Text>
 
-      {/* Heading */}
-      <Text style={[styles.busStopsText, darkMode && styles.darkText]}>Bus Stops</Text>
-
-      {/* Show loader if data is loading */}
       {loading ? (
         <ActivityIndicator size="large" color={darkMode ? "#FFDD00" : "#000"} style={styles.loader} />
       ) : (
         <FlatList
-          data={filteredBusStops} // Use filtered bus stops here
+          data={sortedBusStops} 
           renderItem={renderBusStopItem}
-          keyExtractor={(item, index) => index.toString()} // Use index as key if no unique id is available
+          keyExtractor={(item) => item.id} 
           contentContainerStyle={styles.busStopsList}
         />
       )}
@@ -160,7 +141,7 @@ const styles = StyleSheet.create({
     paddingTop: 40, 
   },
   darkMode: {
-    backgroundColor: 'black', // Dark mode background
+    backgroundColor: 'black',
   },
   busStopsList: {
     paddingHorizontal: 10,
@@ -225,17 +206,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  menuContainer: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    zIndex: 10,
-  },
-  menuButton: {
-    backgroundColor: '#31473A',
-    padding: 5,
-    borderRadius: 50,
   },
 });
 
