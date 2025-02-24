@@ -99,19 +99,19 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.busItemContainer}>
         {/* Bus Item Content */}
         <View style={styles.busItemContent}>
-          <Image source={require('../../assets/images/Main-logo.png')} style={styles.busIcon} />
+        <TouchableOpacity
+            style={styles.busArrow}
+            onPress={() => navigation.navigate('MapScreen', { busId: item.id, busName: item.bus_name })}
+          >
+            <FontAwesome name="map-marker" size={30} color="black" />
+          </TouchableOpacity>
           <View style={styles.busInfo}>
             <Text style={styles.busName}>{item.bus_name}</Text>
             <Text style={styles.busText}>Bus Number: {item.bus_number}</Text>
             <Text style={styles.busText}>Route: {item.route}</Text>
             <Text style={styles.seatStatus}>{item.occupancy}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.busArrow}
-            onPress={() => navigation.navigate('MapScreen', { busId: item.id, busName: item.bus_name })}
-          >
-            <FontAwesome name="map-marker" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          
         </View>
 
         {/* Gradient Overlay for Right Half */}
@@ -226,6 +226,7 @@ const styles = StyleSheet.create({
   },
   busArrow: {
     padding: 10,
+    marginRight:30
   },
   busGradient: {
     position: 'absolute',
