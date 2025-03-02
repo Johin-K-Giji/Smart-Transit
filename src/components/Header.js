@@ -99,7 +99,7 @@ const Header = ({ weather, locationDetails, selectedMode, onModeChange, navigati
 
       {/* Hamburger Icon */}
       <TouchableOpacity onPress={() => setIsMenuOpen(!isMenuOpen)} style={styles.hamburgerIcon}>
-        <MaterialCommunityIcons name="menu" size={30} color="white" />
+        <MaterialCommunityIcons name="menu" size={30} color="black" />
       </TouchableOpacity>
 
       {/* Burger Menu Modal */}
@@ -147,7 +147,7 @@ const Header = ({ weather, locationDetails, selectedMode, onModeChange, navigati
 const styles = StyleSheet.create({
   headerContainer: {
     width: "100%",
-    backgroundColor: "black",
+    backgroundColor: "white",
     paddingVertical: 30,
     alignItems: "center",
     position: "relative",

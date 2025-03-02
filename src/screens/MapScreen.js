@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Vibration, Alert } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Vibration, Alert, Button } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
@@ -19,6 +19,7 @@ const MapScreen = ({ route }) => {
   const [eta, setEta] = useState(null);
   const [screenLoading, setScreenLoading] = useState(true);
   const [showAlert, setShowAlert] = useState(false);
+  const [isSpeechOn, setIsSpeechOn] = useState(true); // Speech Toggle State
 
   useEffect(() => {
     const getUserLocation = async () => {
@@ -66,17 +67,28 @@ const MapScreen = ({ route }) => {
     if (busLocation && userLocation) {
       const dist = getDistance(busLocation, userLocation);
       setDistance(dist.toFixed(2));
-      const avgSpeed = busSpeed ? parseFloat(busSpeed) : 50;
-      setEta(Math.round((dist / avgSpeed) * 60));
-      if (dist <= 0.2 && !showAlert) {
-        setShowAlert(true);
-        Vibration.vibrate();
-        Speech.speak("The bus is within 200 meters of your location!");
-      }
-      console.log("eta",eta);
+  
+      const avgSpeed = busSpeed ? parseFloat(busSpeed) : 50; // Default speed 50 km/h
+      const calculatedEta = Math.round((dist / avgSpeed) * 60);
       
+      if (!eta || eta !== calculatedEta) { // Update only if ETA changes or is null
+        setEta(calculatedEta);
+      }
+  
+      if (isSpeechOn) {
+        if (dist <= 0.6 && !showAlert) {
+          setShowAlert(true);
+          Vibration.vibrate();
+          Speech.speak("The bus is within 500 meters of your location!");
+        }
+  
+        if (dist <= 0.05) {
+          Speech.speak("The bus has arrived!");
+        }
+      }
     }
-  }, [busLocation, userLocation, busSpeed]);
+  }, [busLocation, userLocation, busSpeed]); // Runs whenever location or speed updates
+  
 
   const getDistance = (coord1, coord2) => {
     const R = 6371;
@@ -89,13 +101,12 @@ const MapScreen = ({ route }) => {
   return (
     <View style={styles.container}>
       {screenLoading ? (
-        <ActivityIndicator size="large" color="#00ff00" />
+        <ActivityIndicator size="large" color="#0000ff" />
       ) : busLocation && userLocation ? (
         <>
           <Text style={styles.title}>{busName} Location</Text>
           <MapView
             provider={PROVIDER_GOOGLE}
-            customMapStyle={darkMapStyle}
             style={styles.map}
             region={{ latitude: busLocation.latitude, longitude: busLocation.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
           >
@@ -110,7 +121,13 @@ const MapScreen = ({ route }) => {
             />
           </MapView>
           <Text style={styles.infoText}>Distance: {distance ? `${distance} km` : 'Calculating...'}</Text>
-          <Text style={styles.infoText}>ETA: {eta ? `${eta} mins` : 'Calculating...'}</Text>
+          <Text style={styles.infoText}>
+            ETA: {eta ? (eta < 1 ? "Less than 1 min" : `${eta} mins`) : 'Les than  1 minute'}
+          </Text>
+          <Button 
+            title={isSpeechOn ? "Turn Off Speech" : "Turn On Speech"} 
+            onPress={() => setIsSpeechOn(!isSpeechOn)}
+          />
         </>
       ) : (
         <Text style={styles.error}>Failed to fetch locations</Text>
@@ -119,25 +136,17 @@ const MapScreen = ({ route }) => {
   );
 };
 
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#212121" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#373737" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
-];
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
   },
   title: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#000",
     marginBottom: 10,
   },
   map: {
@@ -148,7 +157,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginTop: 5,
-    color: "#00ff00",
+    color: "#000",
   },
   error: {
     color: "red",

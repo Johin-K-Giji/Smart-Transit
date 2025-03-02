@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, Image, TouchableOpacity, Text, SafeAreaView, StatusBar, Animated } from 'react-native';
+import { View, FlatList, StyleSheet, TouchableOpacity, Text, SafeAreaView, StatusBar, Animated } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import axios from 'axios';
-import { LinearGradient } from 'expo-linear-gradient';
 import { db } from '../Firebase/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import Header from '../components/Header';
@@ -96,14 +95,13 @@ const HomeScreen = ({ navigation }) => {
 
   const renderBusItem = ({ item }) => {
     return (
-      <View style={styles.busItemContainer}>
-        {/* Bus Item Content */}
+      <View style={[styles.busItemContainer, getOccupancyStyles(item.occupancy)]}>
         <View style={styles.busItemContent}>
-        <TouchableOpacity
+          <TouchableOpacity
             style={styles.busArrow}
             onPress={() => navigation.navigate('MapScreen', { busId: item.id, busName: item.bus_name })}
           >
-            <FontAwesome name="map-marker" size={30} color="black" />
+            <FontAwesome name="map-marker" size={30} color="white" />
           </TouchableOpacity>
           <View style={styles.busInfo}>
             <Text style={styles.busName}>{item.bus_name}</Text>
@@ -111,30 +109,21 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.busText}>Route: {item.route}</Text>
             <Text style={styles.seatStatus}>{item.occupancy}</Text>
           </View>
-          
         </View>
-
-        {/* Gradient Overlay for Right Half */}
-        <LinearGradient
-          colors={getOccupancyColors(item.occupancy)}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.busGradient}
-        />
       </View>
     );
   };
 
-  const getOccupancyColors = (occupancy) => {
+  const getOccupancyStyles = (occupancy) => {
     switch (occupancy) {
       case 'Overcrowded':
-        return ['transparent', 'red'];
+        return { backgroundColor: 'red' };
       case 'Fully Seated':
-        return ['transparent', '#42a7eb'];
+        return { backgroundColor: '#42a7eb' };
       case 'Less Busy':
-        return ['transparent', 'green'];
+        return { backgroundColor: 'green' };
       default:
-        return ['transparent', 'gray'];
+        return { backgroundColor: 'gray' };
     }
   };
 
@@ -148,7 +137,7 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#212121" />
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
       <Header
         weather={weather}
         locationDetails={locationDetails}
@@ -173,7 +162,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 40,
-    backgroundColor: 'black',
+    backgroundColor: 'white',
     paddingBottom: 20,
   },
   busStopsText: {
@@ -182,7 +171,7 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     marginBottom: 5,
     marginTop: 10,
-    color: '#fff',
+    color: 'black',
   },
   busList: {
     padding: 10,
@@ -190,21 +179,14 @@ const styles = StyleSheet.create({
   busItemContainer: {
     borderRadius: 15,
     marginVertical: 10,
+    padding: 10,
     overflow: 'hidden',
-    position: 'relative', // Needed for absolute positioning of gradient
   },
   busItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    backgroundColor: '#ffff', // Base color for bus item
     borderRadius: 15,
-  },
-  busIcon: {
-    width: 50,
-    height: 50,
-    resizeMode: 'contain',
-    marginRight: 15,
   },
   busInfo: {
     flex: 1,
@@ -212,30 +194,21 @@ const styles = StyleSheet.create({
   busName: {
     fontSize: 16,
     fontWeight: '900',
-    color: 'black',
+    color: 'white',
   },
   busText: {
     fontSize: 14,
-    color: 'black',
     fontWeight: '700',
+    color: 'white',
   },
   seatStatus: {
     fontSize: 14,
-    color: 'black',
     fontWeight: '700',
+    color: 'white',
   },
   busArrow: {
     padding: 10,
-    marginRight:30
-  },
-  busGradient: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: '50%', // Cover only the right half
-    borderTopRightRadius: 15,
-    borderBottomRightRadius: 15,
+    marginRight: 30,
   },
 });
 
