@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, FlatList, StyleSheet, TouchableOpacity, Text, SafeAreaView, StatusBar, Animated } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -6,6 +6,7 @@ import axios from 'axios';
 import { db } from '../Firebase/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import Header from '../components/Header';
+import haversine from 'haversine-distance';
 
 const HomeScreen = ({ navigation }) => {
   const [weather, setWeather] = useState(null);
@@ -15,32 +16,24 @@ const HomeScreen = ({ navigation }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [selectedMode, setSelectedMode] = useState('HomeScreen');
 
-  useEffect(() => {
-    const fetchBuses = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'buses'));
-        const busesList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setBuses(busesList);
-      } catch (error) {
-        console.error('Error fetching buses:', error);
-      }
-    };
+  // Fetch bus data
+  const fetchBuses = useCallback(async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'buses'));
+      const busesList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setBuses(busesList);
+    } catch (error) {
+      console.error('Error fetching buses:', error);
+    }
+  }, []);
 
+  useEffect(() => {
     fetchBuses();
     const interval = setInterval(fetchBuses, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchBuses]);
 
-  const weatherIconMap = {
-    Sunny: 'weather-sunny',
-    'Partly cloudy': 'weather-partly-cloudy',
-    Cloudy: 'weather-cloudy',
-    Rain: 'weather-rainy',
-    Thunderstorm: 'weather-lightning',
-    Snow: 'weather-snowy',
-    Fog: 'weather-fog',
-  };
-
+  // Fetch user location and weather
   useEffect(() => {
     const fetchLocationAndWeather = async () => {
       try {
@@ -55,64 +48,98 @@ const HomeScreen = ({ navigation }) => {
 
         const locationResponse = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (locationResponse.length > 0) {
-          setLocationDetails(locationResponse[0]);
+          setLocationDetails({
+            ...locationResponse[0],
+            latitude,
+            longitude,
+          });
         }
 
         const weatherResponse = await axios.get(
-          `http://api.weatherapi.com/v1/current.json?key=f3ff6d04c96747d9b68100825251201&q=${latitude},${longitude}&aqi=no`
+          `http://api.weatherapi.com/v1/current.json?key=YOUR_WEATHER_API_KEY&q=${latitude},${longitude}&aqi=no`
         );
         setWeather(weatherResponse.data);
       } catch (error) {
-        console.error(error);
+        console.error('Error fetching weather/location:', error);
       }
     };
 
     fetchLocationAndWeather();
   }, []);
 
+  // Filter buses based on location and calculate distance
   useEffect(() => {
-    if (locationDetails) {
+    if (locationDetails && locationDetails.latitude && locationDetails.longitude) {
       const relevantWords = Object.values(locationDetails)
         .join(' ')
         .toLowerCase()
         .replace(/,/g, '')
         .split(/\s+/);
 
+      // Step 1: Filter buses based on relevant locations
       const filtered = buses.filter((bus) => {
         if (Array.isArray(bus.major_cities)) {
           const citiesArray = bus.major_cities.flatMap(city =>
             city.split(',').map(cityName => cityName.trim().toLowerCase())
           );
-
           return relevantWords.some(word => citiesArray.includes(word));
         }
         return false;
       });
 
-      setFilteredBuses(filtered);
+      // Step 2: Calculate distance for filtered buses
+      const userCoords = {
+        latitude: locationDetails.latitude,
+        longitude: locationDetails.longitude,
+      };
+
+      const updatedBuses = filtered
+        .map((bus) => {
+          if (bus.current_location?.latitude && bus.current_location?.longitude) {
+            const busCoords = {
+              latitude: bus.current_location.latitude,
+              longitude: bus.current_location.longitude,
+            };
+            const distance = haversine(userCoords, busCoords) / 1000; // Convert meters to KM
+            return { ...bus, distance };
+          }
+          return bus;
+        })
+        .filter((bus) => bus.distance !== undefined) // Ensure valid distances
+        .sort((a, b) => a.distance - b.distance); // Step 3: Sort by nearest distance
+
+      setFilteredBuses(updatedBuses);
     }
   }, [locationDetails, buses]);
 
-  const renderBusItem = ({ item }) => {
-    return (
-      <View style={[styles.busItemContainer, getOccupancyStyles(item.occupancy)]}>
-        <View style={styles.busItemContent}>
-          <TouchableOpacity
-            style={styles.busArrow}
-            onPress={() => navigation.navigate('MapScreen', { busId: item.id, busName: item.bus_name })}
-          >
-            <FontAwesome name="map-marker" size={30} color="white" />
-          </TouchableOpacity>
-          <View style={styles.busInfo}>
-            <Text style={styles.busName}>{item.bus_name}</Text>
-            <Text style={styles.busText}>Bus Number: {item.bus_number}</Text>
-            <Text style={styles.busText}>Route: {item.route}</Text>
-            <Text style={styles.seatStatus}>{item.occupancy}</Text>
-          </View>
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const renderBusItem = ({ item }) => (
+    <View style={[styles.busItemContainer, getOccupancyStyles(item.occupancy)]}>
+      <View style={styles.busItemContent}>
+        <TouchableOpacity
+          style={styles.busArrow}
+          onPress={() => navigation.navigate('MapScreen', { busId: item.id, busName: item.bus_name })}
+        >
+          <FontAwesome name="map-marker" size={30} color="white" />
+        </TouchableOpacity>
+        <View style={styles.busInfo}>
+          <Text style={styles.busName}>{item.bus_name}</Text>
+          <Text style={styles.busText}>Bus Number: {item.bus_number}</Text>
+          <Text style={styles.busText}>Route: {item.route}</Text>
+          <Text style={styles.busText}>
+            Distance: {typeof item.distance === 'number' ? item.distance.toFixed(2) + ' km' : 'N/A'}
+          </Text>
         </View>
       </View>
-    );
-  };
+    </View>
+  );
 
   const getOccupancyStyles = (occupancy) => {
     switch (occupancy) {
@@ -127,21 +154,12 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
+      <StatusBar barStyle="light-content" backgroundColor="#212121" />
       <Header
         weather={weather}
         locationDetails={locationDetails}
-        weatherIconMap={weatherIconMap}
         selectedMode={selectedMode}
         onModeChange={setSelectedMode}
         navigation={navigation}
@@ -171,7 +189,7 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     marginBottom: 5,
     marginTop: 10,
-    color: 'black',
+    color: '#000',
   },
   busList: {
     padding: 10,
@@ -179,14 +197,12 @@ const styles = StyleSheet.create({
   busItemContainer: {
     borderRadius: 15,
     marginVertical: 10,
-    padding: 10,
     overflow: 'hidden',
   },
   busItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    borderRadius: 15,
   },
   busInfo: {
     flex: 1,
@@ -198,13 +214,8 @@ const styles = StyleSheet.create({
   },
   busText: {
     fontSize: 14,
-    fontWeight: '700',
     color: 'white',
-  },
-  seatStatus: {
-    fontSize: 14,
     fontWeight: '700',
-    color: 'white',
   },
   busArrow: {
     padding: 10,
